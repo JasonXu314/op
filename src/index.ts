@@ -165,7 +165,14 @@ function evalOps<T>(node: ASTNode<T> | ASTLiteral<T>): ASTLiteral<T> {
 			}
 		} else if (['-', '*', '/'].includes(node[OP])) {
 			if (typeof left === 'number' && typeof right === 'number') {
-				return left - right;
+				switch (node[OP]) {
+					case '-':
+						return left - right;
+					case '*':
+						return left * right;
+					case '/':
+						return left / right;
+				}
 			} else {
 				throw new Error(`Operator error: cannot add '${typeof left}' + '${typeof right}'`);
 			}
