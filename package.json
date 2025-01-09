@@ -1,0 +1,26 @@
+{
+	"name": "@nano-utils/op",
+	"version": "1.0.0",
+	"description": "Operator overloading in JS",
+	"keywords": [
+		"operator",
+		"overloading"
+	],
+	"license": "UNLICENSED",
+	"author": "Jason Xu",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "tsc",
+		"test": "jest"
+	},
+	"devDependencies": {
+		"@types/jest": "^29.5.14",
+		"@types/node": "^22.10.5",
+		"jest": "^29.7.0",
+		"ts-jest": "^29.2.5",
+		"typescript": "^5.7.2"
+	}
+}
+

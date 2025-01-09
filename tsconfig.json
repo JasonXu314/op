@@ -1,0 +1,11 @@
+{
+	"compilerOptions": {
+		"module": "NodeNext",
+		"outDir": "dist",
+		"moduleResolution": "nodenext",
+		"declaration": true,
+		"lib": ["es2023"]
+	},
+	"include": ["src/**/*"]
+}
+
