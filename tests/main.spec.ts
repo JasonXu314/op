@@ -45,10 +45,6 @@ describe('Core Behavior', () => {
 				}
 			}
 		}
-
-		public 'operator/'(other: number): Vector {
-			return new Vector(...this.elems.map((e) => e / other));
-		}
 	}
 
 	it('Can evaluate default binary operations', () => {
@@ -62,7 +58,6 @@ describe('Core Behavior', () => {
 		expect(op<Vector>`${a} - ${b}`).toMatchObject(new Vector(0, 0, 0));
 		expect(op<Vector>`${a} * ${2}`).toMatchObject(new Vector(2, 4, 6));
 		expect(op<number>`${a} * ${c}`).toBe(2 + 6 + 12);
-		expect(op<Vector>`${a} / ${2}`).toMatchObject(new Vector(0.5, 1, 1.5));
 	});
 
 	it('Can evaluate literals', () => {
@@ -70,8 +65,9 @@ describe('Core Behavior', () => {
 
 		expect(op<Vector>`${a} * 2`).toMatchObject(new Vector(2, 4, 6));
 		expect(op<Vector>`${a} * 12`).toMatchObject(new Vector(12, 24, 36));
-		expect(op<Vector>`${a} / 2`).toMatchObject(new Vector(0.5, 1, 1.5));
 		expect(op<string>`'fizz' + 'buzz'`).toBe('fizzbuzz');
+		expect(op<string>`'fizz' + 2`).toBe('fizz2');
+		expect(op<string>`1 + 'buzz'`).toBe('1buzz');
 		expect(op<string>`1 / 2`).toBe(0.5);
 		expect(op<string>`1 - 2`).toBe(-1);
 		expect(op<string>`1 * 2`).toBe(2);
@@ -102,6 +98,23 @@ describe('Core Behavior', () => {
 			c = new Vector(2, 3, 4);
 
 		expect(op<Vector>`${a} * (${b} + ${c})`).toBe(6 + 20 + 42);
+	});
+
+	it('Gives (semi-) useful error messages', () => {
+		const a = new Vector(1, 2, 3);
+
+		expect(() => op<never>`${a} + '`).toThrow('Syntax error: string literal expected');
+		expect(() => op<never>`${a} + 'asdf`).toThrow('Syntax error: unterminated string literal');
+		expect(() => op<never>`${a} + @`).toThrow("Syntax error: invalid token '@'");
+		expect(() => op<never>`(${a} * 2`).toThrow("Syntax error: unterminated '('");
+		expect(() => op<never>`${a} * +`).toThrow('Syntax error: expected value');
+		expect(() => op<never>`${a} *`).toThrow('Syntax error: expected value');
+		expect(() => op<never>`${a} 2`).toThrow('Syntax error: expected operator');
+
+		expect(() => op<never>`${a} / 2`).toThrow('Operator error: operator/ is not a callable on left operand [object Object]');
+		expect(() => op<never>`2 + ${a}`).toThrow("Operator error: cannot evaluate 'number' + 'object'");
+		expect(() => op<never>`2 / ${a}`).toThrow("Operator error: cannot evaluate 'number' / 'object'");
+		expect(() => op<never>`2 == ${a}`).toThrow('Operator error: operator== is not a builtin or a callable on left operand 2');
 	});
 });
 

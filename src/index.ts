@@ -90,14 +90,21 @@ export function makeOp(ops: string[][]): OpTag {
 							next();
 							return expr;
 						} else {
-							throw new Error(`Syntax error: missing ')' before ${strs[strIdx].slice(charIdx)}${vals[strIdx]}, got ${cp[OP]}`);
+							// throw new Error(`Syntax error: missing ')' before ${strs[strIdx].slice(charIdx)}${vals[strIdx]}, got ${cp[OP]}`);
+							// should be end of input because top level parse will consume everything until ')'
+							throw new Error("Syntax error: unterminated '('");
 						}
 					} else {
 						throw new Error('Syntax error: expected value');
 					}
 				} else {
 					next();
-					return tok;
+
+					if (tok !== undefined) {
+						return tok;
+					} else {
+						throw new Error('Syntax error: expected value');
+					}
 				}
 			}
 		].concat(
@@ -161,7 +168,7 @@ function evalOps<T>(node: ASTNode<T> | ASTLiteral<T>): ASTLiteral<T> {
 				// need as any because typescript disallows (string | number) + (string | number) even though it's perfectly fine in JS
 				return (left as any) + right;
 			} else {
-				throw new Error(`Operator error: cannot add '${typeof left}' + '${typeof right}'`);
+				throw new Error(`Operator error: cannot evaluate '${typeof left}' + '${typeof right}'`);
 			}
 		} else if (['-', '*', '/'].includes(node[OP])) {
 			if (typeof left === 'number' && typeof right === 'number') {
@@ -174,7 +181,7 @@ function evalOps<T>(node: ASTNode<T> | ASTLiteral<T>): ASTLiteral<T> {
 						return left / right;
 				}
 			} else {
-				throw new Error(`Operator error: cannot add '${typeof left}' + '${typeof right}'`);
+				throw new Error(`Operator error: cannot evaluate '${typeof left}' ${node[OP]} '${typeof right}'`);
 			}
 		} else {
 			throw new Error(`Operator error: ${op} is not a builtin or a callable on left operand ${left}`);
