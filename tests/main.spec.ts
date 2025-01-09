@@ -71,6 +71,7 @@ describe('Core Behavior', () => {
 		expect(op<Vector>`${a} * 2`).toMatchObject(new Vector(2, 4, 6));
 		expect(op<Vector>`${a} * 12`).toMatchObject(new Vector(12, 24, 36));
 		expect(op<Vector>`${a} / 2`).toMatchObject(new Vector(0.5, 1, 1.5));
+		expect(op<string>`'fizz' + 'buzz'`).toBe('fizzbuzz');
 	});
 
 	it('Can evaluate chained operations', () => {

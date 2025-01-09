@@ -70,7 +70,7 @@ export function makeOp(ops: string[][]): OpTag {
 					if (typeof consumedTok === 'object' && OP in consumedTok) {
 						charIdx += consumedTok[OP].length;
 					} else {
-						charIdx += consumedTok.toString().length;
+						charIdx += typeof consumedTok === 'string' ? consumedTok.length + 2 : consumedTok.toString().length;
 					}
 				}
 			}
@@ -150,10 +150,27 @@ function evalOps<T>(node: ASTNode<T> | ASTLiteral<T>): ASTLiteral<T> {
 			right = evalOps(node.right),
 			op = 'operator' + node[OP];
 
-		if (typeof left === 'object' && op in left) {
-			return left[op](right);
+		if (typeof left === 'object') {
+			if (op in left) {
+				return left[op](right);
+			} else {
+				throw new Error(`Operator error: ${op} is not a callable on left operand ${left}`);
+			}
+		} else if (node[OP] === '+') {
+			if ((typeof left === 'string' || typeof left === 'number') && (typeof right === 'string' || typeof right === 'number')) {
+				// need as any because typescript disallows (string | number) + (string | number) even though it's perfectly fine in JS
+				return (left as any) + right;
+			} else {
+				throw new Error(`Operator error: cannot add '${typeof left}' + '${typeof right}'`);
+			}
+		} else if (['-', '*', '/'].includes(node[OP])) {
+			if (typeof left === 'number' && typeof right === 'number') {
+				return left - right;
+			} else {
+				throw new Error(`Operator error: cannot add '${typeof left}' + '${typeof right}'`);
+			}
 		} else {
-			throw new Error(`Operator error: ${op} is not a callable on left operand ${left}`);
+			throw new Error(`Operator error: ${op} is not a builtin or a callable on left operand ${left}`);
 		}
 	} else {
 		return node;
