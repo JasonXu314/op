@@ -100,8 +100,64 @@ describe('Core Behavior', () => {
 		expect(op<Vector>`${a} * (${b} + ${c})`).toBe(6 + 20 + 42);
 	});
 
+	it('Falls back to static methods', () => {
+		class Vec extends Vector {
+			public static 'operator/'(vec: Vec, other: number): Vec {
+				return new Vec(...vec.elems.map((e) => e / other));
+			}
+
+			public static 'operator*'(other: number, vec: Vec): Vec {
+				return vec['operator*'](other);
+			}
+
+			public static 'operator+'(other: Point, vec: Vec): Vec {
+				return vec['operator+'](new Vec(other.a, other.b, 0));
+			}
+		}
+
+		class Point {
+			public constructor(public readonly a: number, public readonly b: number) {}
+
+			public static 'operator*'(other: number, pt: Point): Point {
+				return new Point(pt.a * other, pt.b * other);
+			}
+
+			public static 'operator+'(other: number, pt: Point): Point {
+				if (!(pt instanceof Point)) throw new Error('Not point on RHS');
+				if (typeof other !== 'number') throw new Error('Not number on LHS'); // tests operator disambiguation
+
+				return new Point(pt.a + other, pt.b + other);
+			}
+		}
+
+		const a = new Vec(1, 2, 3),
+			b = new Point(3, 4);
+
+		expect(op<Vec>`${a} / 2`).toMatchObject(new Vec(0.5, 1, 1.5));
+		expect(op<Vec>`${b} + ${a}`).toMatchObject(new Vec(4, 6, 3));
+		expect(op<Vec>`2 * ${a}`).toMatchObject(new Vec(2, 4, 6));
+		expect(op<Vec>`2 * ${b}`).toMatchObject(new Point(6, 8));
+		expect(op<Vec>`2 + ${b}`).toMatchObject(new Point(5, 6));
+	});
+
 	it('Gives (semi-) useful error messages', () => {
-		const a = new Vector(1, 2, 3);
+		class Point {
+			public constructor(public readonly x: number, public readonly y: number) {}
+
+			public [Symbol.toPrimitive](): string {
+				return `(${this.x}, ${this.y})`;
+			}
+		}
+
+		class Vec extends Vector {
+			public toString(): string {
+				return `<${this.elems.join(', ')}>`;
+			}
+		}
+
+		const a = new Vector(1, 2, 3),
+			b = new Point(4, 5),
+			c = new Vec(6, 7, 8);
 
 		expect(() => op<never>`${a} + '`).toThrow('Syntax error: string literal expected');
 		expect(() => op<never>`${a} + 'asdf`).toThrow('Syntax error: unterminated string literal');
@@ -111,9 +167,13 @@ describe('Core Behavior', () => {
 		expect(() => op<never>`${a} *`).toThrow('Syntax error: expected value');
 		expect(() => op<never>`${a} 2`).toThrow('Syntax error: expected operator');
 
-		expect(() => op<never>`${a} / 2`).toThrow('Operator error: operator/ is not a callable on left operand [object Object]');
-		expect(() => op<never>`2 + ${a}`).toThrow("Operator error: cannot evaluate 'number' + 'object'");
-		expect(() => op<never>`2 / ${a}`).toThrow("Operator error: cannot evaluate 'number' / 'object'");
+		expect(() => op<never>`${a} / 2`).toThrow(
+			"Operator error: operator/ is not a callable on left operand Vector or a static function on either operand's types"
+		);
+		expect(() => op<never>`2 + ${a}`).toThrow('Operator error: cannot evaluate 2 + Vector');
+		expect(() => op<never>`2 + ${b}`).toThrow('Operator error: cannot evaluate 2 + (4, 5)');
+		expect(() => op<never>`2 + ${c}`).toThrow('Operator error: cannot evaluate 2 + <6, 7, 8>');
+		expect(() => op<never>`2 / ${a}`).toThrow('Operator error: cannot evaluate 2 / Vector');
 		expect(() => op<never>`2 == ${a}`).toThrow('Operator error: operator== is not a builtin or a callable on left operand 2');
 	});
 });

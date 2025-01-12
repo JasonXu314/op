@@ -161,14 +161,46 @@ function evalOps<T>(node: ASTNode<T> | ASTLiteral<T>): ASTLiteral<T> {
 			if (op in left) {
 				return left[op](right);
 			} else {
-				throw new Error(`Operator error: ${op} is not a callable on left operand ${left}`);
+				if (op in left.constructor) {
+					const Class = left.constructor;
+
+					try {
+						return Class[op](left, right);
+					} catch (e) {}
+				}
+
+				if (typeof right === 'object' && op in right.constructor) {
+					const Class = right.constructor;
+
+					try {
+						return Class[op](left, right);
+					} catch (e) {}
+				}
+
+				throw new Error(
+					`Operator error: ${op} is not a callable on left operand ${toErrorDisplay(left)} or a static function on either operand's types`
+				);
 			}
 		} else if (node[OP] === '+') {
 			if ((typeof left === 'string' || typeof left === 'number') && (typeof right === 'string' || typeof right === 'number')) {
 				// need as any because typescript disallows (string | number) + (string | number) even though it's perfectly fine in JS
 				return (left as any) + right;
 			} else {
-				throw new Error(`Operator error: cannot evaluate '${typeof left}' + '${typeof right}'`);
+				if (typeof right === 'object' && op in right) {
+					try {
+						return right[op](left);
+					} catch (e) {}
+				}
+
+				if (typeof right === 'object' && op in right.constructor) {
+					const Class = right.constructor;
+
+					try {
+						return Class[op](left, right);
+					} catch (e) {}
+				}
+
+				throw new Error(`Operator error: cannot evaluate ${toErrorDisplay(left)} + ${toErrorDisplay(right)}`);
 			}
 		} else if (['-', '*', '/'].includes(node[OP])) {
 			if (typeof left === 'number' && typeof right === 'number') {
@@ -181,13 +213,41 @@ function evalOps<T>(node: ASTNode<T> | ASTLiteral<T>): ASTLiteral<T> {
 						return left / right;
 				}
 			} else {
-				throw new Error(`Operator error: cannot evaluate '${typeof left}' ${node[OP]} '${typeof right}'`);
+				if (typeof right === 'object' && op in right) {
+					try {
+						return right[op](left);
+					} catch (e) {}
+				}
+
+				if (typeof right === 'object' && op in right.constructor) {
+					const Class = right.constructor;
+
+					try {
+						return Class[op](left, right);
+					} catch (e) {}
+				}
+
+				throw new Error(`Operator error: cannot evaluate ${toErrorDisplay(left)} ${node[OP]} ${toErrorDisplay(right)}`);
 			}
 		} else {
-			throw new Error(`Operator error: ${op} is not a builtin or a callable on left operand ${left}`);
+			throw new Error(`Operator error: ${op} is not a builtin or a callable on left operand ${toErrorDisplay(left)}`);
 		}
 	} else {
 		return node;
+	}
+}
+
+function toErrorDisplay(obj: any): string {
+	if (typeof obj === 'object') {
+		if (Symbol.toPrimitive in obj) {
+			return `${obj}`;
+		} else if ('toString' in obj && obj.toString !== Object.prototype.toString) {
+			return obj.toString();
+		} else {
+			return obj.constructor.name;
+		}
+	} else {
+		return `${obj}`;
 	}
 }
 
