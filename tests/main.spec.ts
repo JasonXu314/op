@@ -224,3 +224,118 @@ describe('Custom operators', () => {
 	});
 });
 
+describe('Unary operators', () => {
+	const op = makeOp([
+		['*', '/'],
+		['+', '-'],
+		['==', '!='],
+		[
+			{ type: 'fn', parts: ['[', ']'] },
+			{ type: 'fn', parts: ['(', ')'] },
+			{ type: 'un', op: '-' },
+			{ type: 'un', op: '~' }
+		]
+	]);
+
+	class Vector {
+		public readonly elems: number[];
+
+		public constructor(...elems: number[]) {
+			this.elems = elems;
+		}
+
+		public 'operator-'(): Vector;
+		public 'operator-'(other: Vector): Vector;
+		public 'operator-'(other?: Vector): Vector {
+			if (other) {
+				return new Vector(...this.elems.map((elem, i) => elem - other.elems[i]));
+			} else {
+				return new Vector(...this.elems.map((elem) => -elem));
+			}
+		}
+
+		public 'operator~'(): Vector {
+			return this['operator-']();
+		}
+	}
+
+	it('Can evaluate unary operators', () => {
+		const v = new Vector(1, 2, 3);
+
+		expect(op`-${v}`).toMatchObject(new Vector(-1, -2, -3));
+		expect(op`~${v}`).toMatchObject(new Vector(-1, -2, -3));
+	});
+
+	it('Can distinguish unary/binary ambiguity', () => {
+		const a = new Vector(1, 2, 3),
+			b = new Vector(2, 3, 4);
+
+		expect(op`${a} -  -${b}`).toMatchObject(new Vector(3, 5, 7));
+	});
+
+	it('Gives (semi-)useful error messages', () => {
+		expect(() => op`-${new Map()}`).toThrow('Operator error: operator- is not a callable on Map');
+	});
+});
+
+describe('Function operators', () => {
+	class Matrix {
+		public readonly elems: number[][];
+
+		public constructor(public readonly n: number, public readonly m: number) {
+			this.elems = new Array(n).fill(null).map(() => new Array(m).fill(0));
+		}
+
+		public set(i: number, j: number, val: number): void {
+			this.elems[i][j] = val;
+		}
+
+		public 'operator[]'(i: number, j: number): number {
+			return this.elems[i][j];
+		}
+
+		public static 'operator()'(mat: Matrix): Matrix {
+			const out = new Matrix(mat.n, mat.m);
+
+			for (let j = 0; j < mat.m; j++) out.elems[0][j] = mat.elems[0][j] / mat.elems[0][0];
+			for (let i = 1; i < mat.n; i++) {
+				for (let j = i; j < mat.m; j++) out.elems[i][j] = mat.elems[i][j] - (out.elems[i - 1][j] * mat.elems[i][i - 1]) / mat.elems[i - 1][i - 1];
+				const f = out.elems[i][i];
+				for (let j = i; j < mat.m; j++) out.elems[i][j] /= f;
+			}
+
+			return out;
+		}
+	}
+
+	it('Can evaluate function operators', () => {
+		const mat = new Matrix(2, 3),
+			mat2 = new Matrix(2, 3),
+			ref = new Matrix(2, 3);
+
+		for (let i = 0; i < 2; i++) {
+			for (let j = 0; j < 3; j++) {
+				mat.set(i, j, i + j);
+				mat2.set(i, j, i + j + 1);
+			}
+		}
+
+		(ref as any).elems = [
+			[1, 2, 3],
+			[0, 1, 2]
+		];
+
+		expect(op`${mat}[1, 2]`).toBe(3);
+		expect(op`${mat2}()`).toMatchObject(ref);
+	});
+
+	it('Gives (semi-)useful error messages', () => {
+		const mat = new Matrix(1, 1);
+
+		expect(() => op`${mat}[1`).toThrow("Syntax error: expected ']'");
+		expect(() => op`${mat}[1,`).toThrow('Syntax error: expected value');
+		expect(() => op`${mat}[1 )]`).toThrow("Syntax error: expected either ',' or ']', got ')'");
+		expect(() => op`${new Map()}()`).toThrow('Operator error: operator() is not a callable on left operand Map or a static function on its type');
+	});
+});
+

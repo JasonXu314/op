@@ -1,6 +1,6 @@
 {
 	"name": "@nano-utils/op",
-	"version": "1.2.0",
+	"version": "2.0.0",
 	"description": "Operator overloading in JS",
 	"private": false,
 	"keywords": [
